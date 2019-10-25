@@ -24,15 +24,15 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr>
-                            <td>183</td>
-                            <td>John Doe</td>
-                            <td>11-7-2014</td>
-                            <td><span class="tag tag-success">Approved</span></td>
-                            <td><span class="tag tag-success">Approved</span></td>
+                        <tr v-for="user in users" :key="user.id">
+                            <td>{{user.id}}</td>
+                            <td>{{user.name}}</td>
+                            <td>{{user.email}}</td>
+                            <td><span class="tag tag-success">{{user.type | capitalize}}</span></td>
+                            <td><span class="tag tag-success">{{user.created_at | mydate}}</span></td>
                             <td>
                                <button class="btn btn-success">Edit</button>
-                               <button class="btn btn-success">Delete</button>
+                               <button @click="deleteUser(user.id)" class="btn btn-success">Delete</button>
                             </td>
                         </tr>
                         </tbody>
@@ -112,6 +112,7 @@
         name: "User",
         data(){
             return{
+                users : {},
                 form : new Form({
                     name : '',
                     email : '',
@@ -123,9 +124,66 @@
             }
         },
         methods:{
+
+
+            deleteUser(id){
+                swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.value) {
+                        Swal.fire(
+                            'Deleted!',
+                            'Your file has been deleted.',
+                            'success'
+                        )
+                    }
+                })
+            },
+
+
+            loadUsers(){
+                axios.get('api/user')
+                    .then(({data}) => (this.users = data.data))
+            },
+
             createUser(){
-                this.form.post('api/user');
+                this.$Progress.start();
+                this.form.post('api/user')
+                    .then(() => {
+                        Fire.$emit('AfterCreated');
+                        $('#addNew').modal('hide');
+                        toast.fire({
+                            type: 'success',
+                            title: 'User created successfully'
+                        });
+
+                        this.$Progress.finish();
+                    })
+                    .catch(() => {
+
+                    });
+
             }
+        },
+
+        created(){
+            this.loadUsers();
+            Fire.$on('AfterCreated',() => this.loadUsers());
+            // setInterval( () => this.loadUsers(),3000);
+        },
+
+        filters: {
+            capitalize: function (value) {
+                if (!value) return ''
+                value = value.toString()
+                return value.charAt(0).toUpperCase() + value.slice(1)
+            },
         }
     }
 </script>
