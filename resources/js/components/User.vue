@@ -6,7 +6,7 @@
                     <h3 class="card-title">Responsive Hover Table</h3>
 
                     <div class="card-tools">
-                        <button class="btn btn-success" data-toggle="modal" data-target="#addNew">Create New</button>
+                        <button class="btn btn-success" @click="newModal">Create New</button>
 
                     </div>
                 </div>
@@ -31,7 +31,7 @@
                             <td><span class="tag tag-success">{{user.type | capitalize}}</span></td>
                             <td><span class="tag tag-success">{{user.created_at | mydate}}</span></td>
                             <td>
-                               <button class="btn btn-success">Edit</button>
+                               <button @click="editModal(user)" class="btn btn-success">Edit</button>
                                <button @click="deleteUser(user.id)" class="btn btn-success">Delete</button>
                             </td>
                         </tr>
@@ -49,12 +49,13 @@
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLongTitle">Add New</h5>
+                        <h5 v-show="!editMode" class="modal-title" id="exampleModalLongTitle">Add New</h5>
+                        <h5 v-show="editMode" class="modal-title" id="exampleModalLongTitle">Update User</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <form @submit.prevent="createUser" >
+                    <form @submit.prevent="editMode ? updateUser() : createUser()" >
                     <div class="modal-body">
                         <div class="form-group">
                             <label>Name</label>
@@ -94,7 +95,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Create</button>
+                        <button v-show="editMode" type="submit" class="btn btn-success">Update</button>
+                        <button v-show="!editMode" type="submit" class="btn btn-primary">Create</button>
                     </div>
                     </form>
                 </div>
@@ -112,8 +114,10 @@
         name: "User",
         data(){
             return{
+                editMode : false,
                 users : {},
                 form : new Form({
+                    id : '',
                     name : '',
                     email : '',
                     type : '',
@@ -125,6 +129,32 @@
         },
         methods:{
 
+            updateUser(){
+                this.form.put('api/user/'+this.form.id)
+                    .then(() => {
+                        Fire.$emit('Afteredited');
+                        $('#addNew').modal('hide');
+                        toast.fire({
+                            type: 'success',
+                            title: 'User Updated successfully'
+                        });
+                    })
+                    .catch(() => {
+                        this.$Progress.fail();
+                    });
+            },
+
+            editModal(user){
+                this.editMode = true;
+                this.form.reset();
+                $('#addNew').modal('show');
+                this.form.fill(user);
+            },
+            newModal(){
+                this.editMode = false;
+                this.form.reset();
+                $('#addNew').modal('show');
+            },
 
             deleteUser(id){
                 swal.fire({
@@ -137,11 +167,20 @@
                     confirmButtonText: 'Yes, delete it!'
                 }).then((result) => {
                     if (result.value) {
-                        Swal.fire(
-                            'Deleted!',
-                            'Your file has been deleted.',
-                            'success'
-                        )
+                    this.form.delete('api/user/'+id)
+                        .then(() => {
+
+                                swal.fire(
+                                    'Deleted!',
+                                    'Your file has been deleted.',
+                                    'success'
+                                )
+
+                            Fire.$emit('Afterdelete');
+                        })
+                        .catch(() => {
+
+                        })
                     }
                 })
             },
@@ -175,6 +214,8 @@
         created(){
             this.loadUsers();
             Fire.$on('AfterCreated',() => this.loadUsers());
+            Fire.$on('Afterdelete',() => this.loadUsers());
+            Fire.$on('Afteredited',() => this.loadUsers());
             // setInterval( () => this.loadUsers(),3000);
         },
 
